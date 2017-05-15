@@ -10,6 +10,13 @@
     android:paddingTop="@dimen/activity_vertical_margin"
     tools:context="com.example.luisflores.camara2api.MainActivity">
 
+    <TextureView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/textureView"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentStart="true"/>
+
     <ImageButton
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -30,4 +37,5 @@
         android:layout_alignParentStart="true"
         android:layout_marginStart="60dp"
         android:contentDescription="@string/camera_button"/>
+
 </RelativeLayout>
