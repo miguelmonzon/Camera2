@@ -1,7 +1,11 @@
 package com.example.luisflores.camara2api;
 
+import android.content.Context;
 import android.graphics.SurfaceTexture;
+import android.hardware.camera2.CameraAccessException;
+import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CameraDevice;
+import android.hardware.camera2.CameraManager;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
@@ -14,10 +18,12 @@ public class MainActivity extends AppCompatActivity {
 
     private TextureView mTextureView;
 
+//    Listener to know when TextureView is available
     private TextureView.SurfaceTextureListener mSurfaceTextureListener = new TextureView.SurfaceTextureListener() {
         @Override
         public void onSurfaceTextureAvailable(final SurfaceTexture surfaceTexture, final int width, final int height) {
             Log.d(TAG, "onSurfaceTextureAvailable --> width: " + width + " height: " + height);
+            setupCamera(width, height);
         }
 
         @Override
@@ -37,6 +43,7 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
+//    Create Camera Object
     private CameraDevice mCameraDevice;
     private CameraDevice.StateCallback mCameraDeviceStateCallback = new CameraDevice.StateCallback() {
         @Override
@@ -58,6 +65,9 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
+//    To get the Camera Id
+    private String mCameraId;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         Log.d(TAG, "onCreate");
@@ -74,6 +84,7 @@ public class MainActivity extends AppCompatActivity {
         boolean status = mTextureView.isAvailable();
         if (mTextureView.isAvailable()) {
             Log.d(TAG, "TextureView is Available: " + status);
+            setupCamera(mTextureView.getWidth(), mTextureView.getHeight());
         } else {
             Log.d(TAG, "TextureView is NOT Available: " + status);
 //            Set a listener to know when TextureView is available
@@ -87,7 +98,7 @@ public class MainActivity extends AppCompatActivity {
         super.onPause();
     }
 
-    //    To implement full size app
+//    To implement full size app
     @Override
     public void onWindowFocusChanged(final boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
@@ -102,6 +113,23 @@ public class MainActivity extends AppCompatActivity {
                                             View.SYSTEM_UI_FLAG_HIDE_NAVIGATION);
         }
 
+    }
+
+    private void setupCamera(int width, int height) {
+        CameraManager cameraManager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
+
+        try {
+            for (String cameraId : cameraManager.getCameraIdList()) {
+                CameraCharacteristics cameraCharacteristics = cameraManager.getCameraCharacteristics(cameraId);
+                if (cameraCharacteristics.get(CameraCharacteristics.LENS_FACING) == CameraCharacteristics.LENS_FACING_FRONT) {
+                    continue;
+                }
+                mCameraId = cameraId;
+                return;
+            }
+        } catch (CameraAccessException e) {
+            e.printStackTrace();
+        }
     }
 
     private void closeCamera() {
