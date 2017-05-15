@@ -7,6 +7,8 @@ import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.CameraManager;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.HandlerThread;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.TextureView;
@@ -65,6 +67,10 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
+//    Create a Background thread
+    private HandlerThread mBackgroundHandlerThread;
+    private Handler mBackgroundHandler;
+
 //    To get the Camera Id
     private String mCameraId;
 
@@ -81,6 +87,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         Log.d(TAG, "onResume");
         super.onResume();
+        startBackgroundThread();
         boolean status = mTextureView.isAvailable();
         if (mTextureView.isAvailable()) {
             Log.d(TAG, "TextureView is Available: " + status);
@@ -95,6 +102,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onPause() {
         closeCamera();
+        stopBackgroundThread();
         super.onPause();
     }
 
@@ -136,6 +144,28 @@ public class MainActivity extends AppCompatActivity {
         if (mCameraDevice != null) {
             mCameraDevice.close();
             mCameraDevice = null;
+        }
+    }
+
+//    Start background thread
+    private void startBackgroundThread() {
+//        Thread created
+        mBackgroundHandlerThread = new HandlerThread("Camara2Api");
+//        Thread started
+        mBackgroundHandlerThread.start();
+//        Once is created and started we can setup a handler pointing to that thread
+        mBackgroundHandler = new Handler(mBackgroundHandlerThread.getLooper());
+    }
+
+//    Stop background thread
+    private void stopBackgroundThread() {
+        mBackgroundHandlerThread.quitSafely();
+        try {
+            mBackgroundHandlerThread.join();
+            mBackgroundHandlerThread = null;
+            mBackgroundHandler = null;
+        } catch (InterruptedException e) {
+            e.printStackTrace();
         }
     }
 }
