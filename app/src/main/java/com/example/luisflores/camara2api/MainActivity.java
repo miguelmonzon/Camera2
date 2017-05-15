@@ -6,15 +6,22 @@ import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.CameraManager;
+import android.hardware.camera2.params.StreamConfigurationMap;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.util.Size;
 import android.util.SparseIntArray;
 import android.view.Surface;
 import android.view.TextureView;
 import android.view.View;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -76,6 +83,9 @@ public class MainActivity extends AppCompatActivity {
 //    To get the Camera Id
     private String mCameraId;
 
+//    To get preview size
+    private Size mPreviewSize;
+
 //    Setup Orientations
     private static SparseIntArray ORIENTATIONS = new SparseIntArray();
     static {
@@ -83,6 +93,14 @@ public class MainActivity extends AppCompatActivity {
         ORIENTATIONS.append(Surface.ROTATION_90, 90);
         ORIENTATIONS.append(Surface.ROTATION_180, 180);
         ORIENTATIONS.append(Surface.ROTATION_270, 270);
+    }
+
+    private static class CompareSizeByArea implements Comparator<Size> {
+
+        @Override
+        public int compare(final Size lhs, final Size rhs) {
+            return Long.signum((long) lhs.getWidth() * lhs.getHeight() / (long) rhs.getWidth() * rhs.getHeight());
+        }
     }
 
     @Override
@@ -144,6 +162,9 @@ public class MainActivity extends AppCompatActivity {
                     continue;
                 }
 
+//                Preview Size
+                StreamConfigurationMap map = cameraCharacteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
+
 //                Finding out if we are in Portrait Mode. If so, we switch width for height and the other way around
                 int deviceOrientation = getWindowManager().getDefaultDisplay().getRotation();
                 Log.d(TAG, "DEVICE ORIENTATION: " + deviceOrientation);
@@ -155,6 +176,8 @@ public class MainActivity extends AppCompatActivity {
                     rotatedWidth = height;
                     rotatedHeight = width;
                 }
+
+                mPreviewSize = chooseOptimalSize(map.getOutputSizes(SurfaceTexture.class), rotatedWidth, rotatedHeight);
 
                 mCameraId = cameraId;
                 return;
@@ -197,5 +220,19 @@ public class MainActivity extends AppCompatActivity {
         int sensorOrientation = cameraCharacteristics.get(CameraCharacteristics.SENSOR_ORIENTATION);
         deviceOrientation = ORIENTATIONS.get(deviceOrientation);
         return (sensorOrientation + deviceOrientation + 360) % 360;
+    }
+
+    private static Size chooseOptimalSize(Size[] choices, int width, int height) {
+        List<Size> bigEnough = new ArrayList<Size>();
+        for (Size option : choices) {
+            if (option.getHeight() == option.getWidth() * height / width && option.getWidth() == width && option.getHeight() >= height) {
+                bigEnough.add(option);
+            }
+        }
+        if (bigEnough.size() > 0) {
+            return Collections.min(bigEnough, new CompareSizeByArea());
+        } else {
+            return choices[0];
+        }
     }
 }
