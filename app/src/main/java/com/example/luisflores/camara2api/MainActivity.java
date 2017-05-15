@@ -1,6 +1,7 @@
 package com.example.luisflores.camara2api;
 
 import android.graphics.SurfaceTexture;
+import android.hardware.camera2.CameraDevice;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
@@ -36,6 +37,27 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
+    private CameraDevice mCameraDevice;
+    private CameraDevice.StateCallback mCameraDeviceStateCallback = new CameraDevice.StateCallback() {
+        @Override
+        public void onOpened(final CameraDevice camera) {
+            mCameraDevice = camera;
+        }
+
+        @Override
+        public void onDisconnected(final CameraDevice camera) {
+//            Clean up resources
+            camera.close();
+            mCameraDevice = null;
+        }
+
+        @Override
+        public void onError(final CameraDevice camera, final int error) {
+            camera.close();
+            mCameraDevice = null;
+        }
+    };
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         Log.d(TAG, "onCreate");
@@ -59,6 +81,12 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    @Override
+    protected void onPause() {
+        closeCamera();
+        super.onPause();
+    }
+
     //    To implement full size app
     @Override
     public void onWindowFocusChanged(final boolean hasFocus) {
@@ -74,5 +102,12 @@ public class MainActivity extends AppCompatActivity {
                                             View.SYSTEM_UI_FLAG_HIDE_NAVIGATION);
         }
 
+    }
+
+    private void closeCamera() {
+        if (mCameraDevice != null) {
+            mCameraDevice.close();
+            mCameraDevice = null;
+        }
     }
 }
