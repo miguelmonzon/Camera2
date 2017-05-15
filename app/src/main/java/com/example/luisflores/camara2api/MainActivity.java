@@ -1,15 +1,20 @@
 package com.example.luisflores.camara2api;
 
+import android.Manifest;
 import android.content.Context;
+import android.content.pm.PackageManager;
 import android.graphics.SurfaceTexture;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.CameraManager;
 import android.hardware.camera2.params.StreamConfigurationMap;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.support.annotation.NonNull;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.util.Size;
@@ -17,6 +22,7 @@ import android.util.SparseIntArray;
 import android.view.Surface;
 import android.view.TextureView;
 import android.view.View;
+import android.widget.Toast;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -27,6 +33,8 @@ public class MainActivity extends AppCompatActivity {
 
     public static final String TAG = "Mobil";
 
+    private static final int REQUEST_CAMERA_PERMISSION_RESULT = 0;
+
     private TextureView mTextureView;
 
 //    Listener to know when TextureView is available
@@ -35,6 +43,7 @@ public class MainActivity extends AppCompatActivity {
         public void onSurfaceTextureAvailable(final SurfaceTexture surfaceTexture, final int width, final int height) {
             Log.d(TAG, "onSurfaceTextureAvailable --> width: " + width + " height: " + height);
             setupCamera(width, height);
+            connectCamera();
         }
 
         @Override
@@ -60,6 +69,7 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onOpened(final CameraDevice camera) {
             mCameraDevice = camera;
+            Toast.makeText(MainActivity.this, "Camera connection made !!", Toast.LENGTH_SHORT).show();
         }
 
         @Override
@@ -121,10 +131,21 @@ public class MainActivity extends AppCompatActivity {
         if (mTextureView.isAvailable()) {
             Log.d(TAG, "TextureView is Available: " + status);
             setupCamera(mTextureView.getWidth(), mTextureView.getHeight());
+            connectCamera();
         } else {
             Log.d(TAG, "TextureView is NOT Available: " + status);
 //            Set a listener to know when TextureView is available
             mTextureView.setSurfaceTextureListener(mSurfaceTextureListener);
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(final int requestCode, @NonNull final String[] permissions, @NonNull final int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQUEST_CAMERA_PERMISSION_RESULT) {
+            if (grantResults[0] != PackageManager.PERMISSION_GRANTED) {
+                Toast.makeText(this, "Application will not run without camera services", Toast.LENGTH_SHORT).show();
+            }
         }
     }
 
@@ -181,6 +202,26 @@ public class MainActivity extends AppCompatActivity {
 
                 mCameraId = cameraId;
                 return;
+            }
+        } catch (CameraAccessException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void connectCamera() {
+        CameraManager cameraManager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                    cameraManager.openCamera(mCameraId, mCameraDeviceStateCallback, mBackgroundHandler);
+                } else {
+                    if (shouldShowRequestPermissionRationale(Manifest.permission.CAMERA)) {
+                        Toast.makeText(this, "Video app required access to the camera", Toast.LENGTH_SHORT).show();
+                    }
+                    requestPermissions(new String[] {Manifest.permission.CAMERA}, REQUEST_CAMERA_PERMISSION_RESULT);
+                }
+            } else {
+                cameraManager.openCamera(mCameraId, mCameraDeviceStateCallback, mBackgroundHandler);
             }
         } catch (CameraAccessException e) {
             e.printStackTrace();
