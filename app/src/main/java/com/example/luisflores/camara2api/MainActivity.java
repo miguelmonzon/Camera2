@@ -5,9 +5,11 @@ import android.content.Context;
 import android.content.pm.PackageManager;
 import android.graphics.SurfaceTexture;
 import android.hardware.camera2.CameraAccessException;
+import android.hardware.camera2.CameraCaptureSession;
 import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.CameraManager;
+import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.params.StreamConfigurationMap;
 import android.os.Build;
 import android.os.Bundle;
@@ -25,6 +27,7 @@ import android.view.View;
 import android.widget.Toast;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -69,6 +72,7 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onOpened(final CameraDevice camera) {
             mCameraDevice = camera;
+            startPreview();
             Toast.makeText(MainActivity.this, "Camera connection made !!", Toast.LENGTH_SHORT).show();
         }
 
@@ -95,6 +99,9 @@ public class MainActivity extends AppCompatActivity {
 
 //    To get preview size
     private Size mPreviewSize;
+
+//    To start preview display
+    private CaptureRequest.Builder mCaptureRequestBuilder;
 
 //    Setup Orientations
     private static SparseIntArray ORIENTATIONS = new SparseIntArray();
@@ -226,6 +233,38 @@ public class MainActivity extends AppCompatActivity {
         } catch (CameraAccessException e) {
             e.printStackTrace();
         }
+    }
+
+    private void startPreview() {
+        SurfaceTexture surfaceTexture = mTextureView.getSurfaceTexture();
+        surfaceTexture.setDefaultBufferSize(mPreviewSize.getWidth(), mPreviewSize.getHeight());
+        Surface previewSurface = new Surface(surfaceTexture);
+
+        try {
+            mCaptureRequestBuilder = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
+            mCaptureRequestBuilder.addTarget(previewSurface);
+
+            mCameraDevice.createCaptureSession(Arrays.asList(previewSurface),
+                new CameraCaptureSession.StateCallback() {
+                    @Override
+                    public void onConfigured(final CameraCaptureSession session) {
+                        try {
+                            session.setRepeatingRequest(mCaptureRequestBuilder.build(), null, mBackgroundHandler);
+                        } catch (CameraAccessException e) {
+                            e.printStackTrace();
+                        }
+                    }
+
+                    @Override
+                    public void onConfigureFailed(final CameraCaptureSession session) {
+                        Toast.makeText(MainActivity.this, "Unable to setup camera preview", Toast.LENGTH_SHORT).show();
+                    }
+                }, null);
+        } catch (CameraAccessException e) {
+            e.printStackTrace();
+        }
+
+
     }
 
     private void closeCamera() {
