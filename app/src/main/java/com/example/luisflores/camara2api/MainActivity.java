@@ -11,6 +11,7 @@ import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.CameraManager;
 import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.params.StreamConfigurationMap;
+import android.media.MediaRecorder;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
@@ -69,7 +70,6 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         public void onSurfaceTextureUpdated(final SurfaceTexture surfaceTexture) {
-            Log.d(TAG, "onSurfaceTextureUpdated");
         }
     };
 
@@ -107,6 +107,11 @@ public class MainActivity extends AppCompatActivity {
 //    To get preview size
     private Size mPreviewSize;
 
+//    To set media recorder
+    private int mTotalRotation;
+    private Size mVideoSize;
+    private MediaRecorder mMediaRecorder;
+
 //    To start preview display
     private CaptureRequest.Builder mCaptureRequestBuilder;
 
@@ -142,6 +147,8 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         createVideoFolder();
+
+        mMediaRecorder = new MediaRecorder();
 
         mTextureView = (TextureView) findViewById(R.id.textureView);
         mRecordImageButton = (ImageButton) findViewById(R.id.videoOnLineImageButton);
@@ -241,8 +248,8 @@ public class MainActivity extends AppCompatActivity {
 //                Finding out if we are in Portrait Mode. If so, we switch width for height and the other way around
                 int deviceOrientation = getWindowManager().getDefaultDisplay().getRotation();
                 Log.d(TAG, "DEVICE ORIENTATION: " + deviceOrientation);
-                int totalRotation = sensorToDeviceRotation(cameraCharacteristics, deviceOrientation);
-                boolean swapRotation = totalRotation == 90 || totalRotation == 270;
+                mTotalRotation = sensorToDeviceRotation(cameraCharacteristics, deviceOrientation);
+                boolean swapRotation = mTotalRotation == 90 || mTotalRotation == 270;
                 int rotatedWidth = width;
                 int rotatedHeight = height;
                 if (swapRotation) {
@@ -251,6 +258,7 @@ public class MainActivity extends AppCompatActivity {
                 }
 
                 mPreviewSize = chooseOptimalSize(map.getOutputSizes(SurfaceTexture.class), rotatedWidth, rotatedHeight);
+                mVideoSize = chooseOptimalSize(map.getOutputSizes(MediaRecorder.class), rotatedWidth, rotatedHeight);
 
                 mCameraId = cameraId;
                 return;
@@ -404,5 +412,17 @@ public class MainActivity extends AppCompatActivity {
                 e.printStackTrace();
             }
         }
+    }
+
+    private void setupMediaRecorder() throws IOException {
+        mMediaRecorder.setVideoSource(MediaRecorder.VideoSource.SURFACE);
+        mMediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
+        mMediaRecorder.setOutputFile(mVideoFileName);
+        mMediaRecorder.setVideoEncodingBitRate(1000000);
+        mMediaRecorder.setVideoFrameRate(30);
+        mMediaRecorder.setVideoSize(mVideoSize.getWidth(), mVideoSize.getHeight());
+        mMediaRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264);
+        mMediaRecorder.setOrientationHint(mTotalRotation);
+        mMediaRecorder.prepare();
     }
 }
