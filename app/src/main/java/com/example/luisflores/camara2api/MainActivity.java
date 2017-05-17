@@ -17,6 +17,7 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.os.SystemClock;
 import android.support.annotation.NonNull;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
@@ -26,6 +27,7 @@ import android.util.SparseIntArray;
 import android.view.Surface;
 import android.view.TextureView;
 import android.view.View;
+import android.widget.Chronometer;
 import android.widget.ImageButton;
 import android.widget.Toast;
 
@@ -87,6 +89,9 @@ public class MainActivity extends AppCompatActivity {
                 }
                 startRecord();
                 mMediaRecorder.start();
+                mChronometer.setBase(SystemClock.elapsedRealtime());
+                mChronometer.setVisibility(View.VISIBLE);
+                mChronometer.start();
             } else {
                 startPreview();
             }
@@ -121,6 +126,9 @@ public class MainActivity extends AppCompatActivity {
     private int mTotalRotation;
     private Size mVideoSize;
     private MediaRecorder mMediaRecorder;
+
+//    To set chronometer
+    private Chronometer mChronometer;
 
 //    To start preview display
     private CaptureRequest.Builder mCaptureRequestBuilder;
@@ -160,6 +168,7 @@ public class MainActivity extends AppCompatActivity {
 
         mMediaRecorder = new MediaRecorder();
 
+        mChronometer = (Chronometer) findViewById(R.id.chronometer);
         mTextureView = (TextureView) findViewById(R.id.textureView);
         mRecordImageButton = (ImageButton) findViewById(R.id.videoOnLineImageButton);
 
@@ -167,6 +176,8 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(final View view) {
                 if (mIsRecording) {
+                    mChronometer.stop();
+                    mChronometer.setVisibility(View.INVISIBLE);
                     mIsRecording = false;
                     mRecordImageButton.setImageResource(R.mipmap.btn_video_online);
                     // Starting the preview prior to stopping recording which should hopefully
@@ -448,6 +459,9 @@ public class MainActivity extends AppCompatActivity {
                 }
                 startRecord();
                 mMediaRecorder.start();
+                mChronometer.setBase(SystemClock.elapsedRealtime());
+                mChronometer.setVisibility(View.VISIBLE);
+                mChronometer.start();
             } else {
                 if (shouldShowRequestPermissionRationale(Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
                     Toast.makeText(this, "App needs to be able to save videos", Toast.LENGTH_SHORT).show();
@@ -464,6 +478,9 @@ public class MainActivity extends AppCompatActivity {
             }
             startRecord();
             mMediaRecorder.start();
+            mChronometer.setBase(SystemClock.elapsedRealtime());
+            mChronometer.setVisibility(View.VISIBLE);
+            mChronometer.start();
         }
     }
 
