@@ -79,7 +79,17 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onOpened(final CameraDevice camera) {
             mCameraDevice = camera;
-            startPreview();
+            if (mIsRecording) {
+                try {
+                    createVideoFileName();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                startRecord();
+                mMediaRecorder.start();
+            } else {
+                startPreview();
+            }
             Toast.makeText(MainActivity.this, "Camera connection made !!", Toast.LENGTH_SHORT).show();
         }
 
@@ -159,6 +169,11 @@ public class MainActivity extends AppCompatActivity {
                 if (mIsRecording) {
                     mIsRecording = false;
                     mRecordImageButton.setImageResource(R.mipmap.btn_video_online);
+                    // Starting the preview prior to stopping recording which should hopefully
+                    // resolve issues being seen in Samsung devices.
+                    startPreview();
+                    mMediaRecorder.stop();
+                    mMediaRecorder.reset();
                 } else {
                     checkWriteStoragePermission();
                 }
@@ -288,6 +303,40 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private void startRecord() {
+        try {
+            setupMediaRecorder();
+
+            SurfaceTexture surfaceTexture = mTextureView.getSurfaceTexture();
+            surfaceTexture.setDefaultBufferSize(mPreviewSize.getWidth(), mPreviewSize.getHeight());
+            Surface previewSurface = new Surface(surfaceTexture);
+
+            Surface recordSurface = mMediaRecorder.getSurface();
+            mCaptureRequestBuilder = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_RECORD);
+            mCaptureRequestBuilder.addTarget(previewSurface);
+            mCaptureRequestBuilder.addTarget(recordSurface);
+
+            mCameraDevice.createCaptureSession(Arrays.asList(previewSurface, recordSurface), new CameraCaptureSession.StateCallback() {
+                @Override
+                public void onConfigured(final CameraCaptureSession session) {
+                    try {
+                        session.setRepeatingRequest(mCaptureRequestBuilder.build(), null, null);
+                    } catch (CameraAccessException e) {
+                        e.printStackTrace();
+                    }
+                }
+
+                @Override
+                public void onConfigureFailed(final CameraCaptureSession session) {
+
+                }
+            }, null);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
     private void startPreview() {
         SurfaceTexture surfaceTexture = mTextureView.getSurfaceTexture();
         surfaceTexture.setDefaultBufferSize(mPreviewSize.getWidth(), mPreviewSize.getHeight());
@@ -397,6 +446,8 @@ public class MainActivity extends AppCompatActivity {
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
+                startRecord();
+                mMediaRecorder.start();
             } else {
                 if (shouldShowRequestPermissionRationale(Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
                     Toast.makeText(this, "App needs to be able to save videos", Toast.LENGTH_SHORT).show();
@@ -411,6 +462,8 @@ public class MainActivity extends AppCompatActivity {
             } catch (IOException e) {
                 e.printStackTrace();
             }
+            startRecord();
+            mMediaRecorder.start();
         }
     }
 
