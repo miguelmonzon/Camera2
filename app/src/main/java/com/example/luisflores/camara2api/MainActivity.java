@@ -238,7 +238,10 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         public int compare(final Size lhs, final Size rhs) {
-            return Long.signum((long) lhs.getWidth() * lhs.getHeight() / (long) rhs.getWidth() * rhs.getHeight());
+//            It seems there is a bug with this way to compare sizes
+//            return Long.signum((long) lhs.getWidth() * lhs.getHeight() / (long) rhs.getWidth() * rhs.getHeight());
+//            This seems to be the fixed
+            return Long.signum( (long)(lhs.getWidth() * lhs.getHeight()) - (long)(rhs.getWidth() * rhs.getHeight()));
         }
     }
 
