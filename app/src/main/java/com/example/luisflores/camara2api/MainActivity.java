@@ -192,7 +192,7 @@ public class MainActivity extends AppCompatActivity {
                     mCaptureState = STATE_PREVIEW;
                     Integer afState = captureResult.get(CaptureResult.CONTROL_AF_STATE);
                     if (afState == CaptureResult.CONTROL_AF_STATE_FOCUSED_LOCKED || afState == CaptureResult.CONTROL_AF_STATE_NOT_FOCUSED_LOCKED) {
-                        Toast.makeText(MainActivity.this, "AF Locked!!", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(MainActivity.this, "AF Locked from Preview!!", Toast.LENGTH_SHORT).show();
                         startStillCaptureRequest();
                     }
                     break;
@@ -206,6 +206,33 @@ public class MainActivity extends AppCompatActivity {
         }
     };
     private ImageButton mStillImageButton;
+
+//    To take a picture while recording
+    private CameraCaptureSession mRecordCaptureSession;
+    private CameraCaptureSession.CaptureCallback mRecordCaptureCallback = new CameraCaptureSession.CaptureCallback() {
+
+        private void process(CaptureResult captureResult) {
+            switch (mCaptureState) {
+                case STATE_PREVIEW:
+                    //Do nothing
+                    break;
+                case STATE_WAIT_LOCK:
+                    mCaptureState = STATE_PREVIEW;
+                    Integer afState = captureResult.get(CaptureResult.CONTROL_AF_STATE);
+                    if (afState == CaptureResult.CONTROL_AF_STATE_FOCUSED_LOCKED || afState == CaptureResult.CONTROL_AF_STATE_NOT_FOCUSED_LOCKED) {
+                        Toast.makeText(MainActivity.this, "AF Locked from Recording!!", Toast.LENGTH_SHORT).show();
+                        startStillCaptureRequest();
+                    }
+                    break;
+            }
+        }
+
+        @Override
+        public void onCaptureCompleted(final CameraCaptureSession session, final CaptureRequest request, final TotalCaptureResult result) {
+            super.onCaptureCompleted(session, request, result);
+            process(result);
+        }
+    };
 
 //    To set chronometer
     private Chronometer mChronometer;
@@ -423,11 +450,12 @@ public class MainActivity extends AppCompatActivity {
             mCaptureRequestBuilder.addTarget(previewSurface);
             mCaptureRequestBuilder.addTarget(recordSurface);
 
-            mCameraDevice.createCaptureSession(Arrays.asList(previewSurface, recordSurface), new CameraCaptureSession.StateCallback() {
+            mCameraDevice.createCaptureSession(Arrays.asList(previewSurface, recordSurface, mImageReader.getSurface()), new CameraCaptureSession.StateCallback() {
                 @Override
                 public void onConfigured(final CameraCaptureSession session) {
+                    mRecordCaptureSession = session;
                     try {
-                        session.setRepeatingRequest(mCaptureRequestBuilder.build(), null, null);
+                        mRecordCaptureSession.setRepeatingRequest(mCaptureRequestBuilder.build(), null, null);
                     } catch (CameraAccessException e) {
                         e.printStackTrace();
                     }
@@ -479,7 +507,11 @@ public class MainActivity extends AppCompatActivity {
 
     private void startStillCaptureRequest() {
         try {
-            mCaptureRequestBuilder = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
+            if (mIsRecording) {
+                mCaptureRequestBuilder = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_VIDEO_SNAPSHOT);
+            } else {
+                mCaptureRequestBuilder = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
+            }
             mCaptureRequestBuilder.addTarget(mImageReader.getSurface());
             mCaptureRequestBuilder.set(CaptureRequest.JPEG_ORIENTATION, mTotalRotation);
 
@@ -494,8 +526,13 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }
             };
-            //We pass null for the background thread because we are already in the background thread
-            mPreviewCaptureSession.capture(mCaptureRequestBuilder.build(), stillCaptureCallback, null);
+            if (mIsRecording) {
+                //We pass null for the background thread because we are already in the background thread
+                mRecordCaptureSession.capture(mCaptureRequestBuilder.build(), stillCaptureCallback, null);
+            } else {
+                //We pass null for the background thread because we are already in the background thread
+                mPreviewCaptureSession.capture(mCaptureRequestBuilder.build(), stillCaptureCallback, null);
+            }
         } catch (CameraAccessException e) {
             e.printStackTrace();
         }
@@ -505,6 +542,10 @@ public class MainActivity extends AppCompatActivity {
         if (mCameraDevice != null) {
             mCameraDevice.close();
             mCameraDevice = null;
+        }
+        if (mMediaRecorder != null) {
+            mMediaRecorder.release();
+            mMediaRecorder = null;
         }
     }
 
@@ -638,7 +679,11 @@ public class MainActivity extends AppCompatActivity {
         mCaptureState = STATE_WAIT_LOCK;
         mCaptureRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CaptureRequest.CONTROL_AF_TRIGGER_START);
         try {
-            mPreviewCaptureSession.capture(mCaptureRequestBuilder.build(), mPreviewCaptureCallback, mBackgroundHandler);
+            if (mIsRecording) {
+                mRecordCaptureSession.capture(mCaptureRequestBuilder.build(), mRecordCaptureCallback, mBackgroundHandler);
+            } else {
+                mPreviewCaptureSession.capture(mCaptureRequestBuilder.build(), mPreviewCaptureCallback, mBackgroundHandler);
+            }
         } catch (CameraAccessException e) {
             e.printStackTrace();
         }
